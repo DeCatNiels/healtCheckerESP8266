@@ -1,0 +1,20 @@
+# Configuration file with secrets
+config.h
+
+# Arduino CLI
+bin/
+
+# Arduino build artifacts
+*.elf
+*.hex
+*.bin
+*.map
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# OS files
+.DS_Store
+Thumbs.db
