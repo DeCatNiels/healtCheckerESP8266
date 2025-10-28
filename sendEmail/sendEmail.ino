@@ -5,7 +5,7 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
-#include "../config.h"
+#include "config.h"
 
 
 #define ENABLE_SMTP  // Allows SMTP class and data

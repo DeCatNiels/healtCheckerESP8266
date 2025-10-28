@@ -1,0 +1,17 @@
+// Configuration file for ESP8266 Health Checker
+// Copy this file to config.h and fill in your actual credentials
+// config.h is gitignored and will not be committed
+
+// WiFi Configuration
+#define WIFI_SSID "your_wifi_ssid"
+#define WIFI_PASSWORD "your_wifi_password"
+
+// Website to Monitor
+#define MONITOR_URL "https://your-website.com"
+
+// Email Configuration (for sendEmail sketch)
+#define SMTP_HOST "smtp.gmail.com"
+#define SMTP_PORT 465
+#define AUTHOR_EMAIL "your-email@gmail.com"
+#define AUTHOR_PASSWORD "your-app-specific-password"
+#define RECIPIENT_EMAIL "recipient@example.com"

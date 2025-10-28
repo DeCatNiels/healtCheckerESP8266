@@ -4,7 +4,7 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
 #include <ESP8266HTTPClient.h>
-#include "../config.h"
+#include "config.h"
 
 // De ENIGE URL die je hoeft aan te passen (moet met https:// beginnen)
 const char* hostURL = MONITOR_URL; 
