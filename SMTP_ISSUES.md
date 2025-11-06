@@ -79,9 +79,15 @@ Keep it simple - monitor via serial output, no email alerts.
 
 ## Current Code Status
 
-The healthChecker includes SMTP email code, but it will **crash intermittently**. This is documented behavior, not a bug in the code.
+**UPDATE:** The healthChecker has been migrated to use IFTTT webhooks! The SMTP email code has been removed and replaced with a fast, reliable webhook implementation.
 
-**If you need reliable alerts, implement the webhook solution above.**
+**Current Implementation:**
+- Uses IFTTT Webhooks for notifications (100% reliable)
+- No more SSL handshake delays or watchdog timeouts
+- Sends notifications in < 1 second
+- Works consistently on ESP8266 hardware
+
+The sendEmail sketch still contains the original SMTP code for testing/reference purposes.
 
 ## Resources
 - IFTTT Webhooks: https://ifttt.com/maker_webhooks

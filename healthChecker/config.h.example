@@ -9,9 +9,16 @@
 // Website to Monitor
 #define MONITOR_URL "https://your-website.com"
 
-// Email Configuration (for sendEmail sketch)
-#define SMTP_HOST "smtp.gmail.com"
-#define SMTP_PORT 465
-#define AUTHOR_EMAIL "your-email@gmail.com"
-#define AUTHOR_PASSWORD "your-app-specific-password"
-#define RECIPIENT_EMAIL "recipient@example.com"
+// ========================================
+// EMAIL NOTIFICATION (via Resend API)
+// ========================================
+
+// Resend - Simple HTTP API for email (100 emails/day free)
+// Sign up at https://resend.com, verify your domain, get API key
+// See RESEND_SETUP_GUIDE.md for detailed instructions
+
+#define RESEND_API_KEY "re_123456789_YourAPIKeyHere"
+#define RESEND_FROM_EMAIL "alerts@yourdomain.com"  // Must be verified domain
+
+// Recipients - Add up to 50 email addresses (Resend limit)
+#define RESEND_TO_EMAILS "your-email@example.com,another@example.com,third@example.com"

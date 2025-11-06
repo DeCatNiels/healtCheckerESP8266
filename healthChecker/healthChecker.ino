@@ -1,6 +1,9 @@
 /**
- * ESP8266 Health Checker with Email Alerts
- * Monitors a website and sends email notifications when it goes down
+ * ESP8266 Health Checker with Email Alerts via Resend
+ * Monitors a website and sends email notifications when it goes down or recovers
+ *
+ * Uses Resend API for reliable email delivery (no SMTP issues!)
+ * See RESEND_SETUP_GUIDE.md for configuration instructions
  */
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
@@ -8,20 +11,10 @@
 #include <ESP8266HTTPClient.h>
 #include "config.h"
 
-#define ENABLE_SMTP
-#define ENABLE_DEBUG
-#define READYMAIL_DEBUG_PORT Serial
-
-#if defined(ESP32) || defined(ESP8266)
-#define READYMAIL_TIME_SOURCE time(nullptr);
-#endif
-
-#include <ReadyMail.h>
-
 // Configuration
 const char* hostURL = MONITOR_URL;
-const unsigned long CHECK_INTERVAL = 10000; // Check every 10 seconds (for testing)
-const int MAX_FAILURES = 1; // Send alert after 1 failure (for testing)
+const unsigned long CHECK_INTERVAL = 60000; // Check every 60 seconds
+const int MAX_FAILURES = 3; // Send alert after 3 failures
 
 // State tracking
 int consecutiveFailures = 0;
@@ -46,67 +39,78 @@ String getHostName(const char* fullUrl) {
     return url.substring(start, end);
 }
 
-// SMTP callback for debugging
-void smtpCb(SMTPStatus status) {
-    if (status.progress.available)
-        ReadyMail.printf("ReadyMail[smtp][%d] Uploading file %s, %d %% completed\n",
-                         status.state, status.progress.filename.c_str(), status.progress.value);
-    else
-        ReadyMail.printf("ReadyMail[smtp][%d]%s\n", status.state, status.text.c_str());
-}
-
-// Send email alert
+// Send email notification via Resend API to all recipients
 bool sendAlert(const char* subject, const char* message) {
-    Serial.println("\n=== Sending Email Alert ===");
-    Serial.printf("Free heap before: %d bytes\n", ESP.getFreeHeap());
-
-    // Force garbage collection
-    delay(100);
-
-    // Check if we have enough memory
-    if (ESP.getFreeHeap() < 15000) {
-        Serial.println("Not enough free memory to send email!");
-        return false;
-    }
-
+    HTTPClient http;
     WiFiClientSecure client;
+
+    Serial.println("\n=== Sending Email via Resend ===");
+
+    String url = "https://api.resend.com/emails";
+
+    // Parse comma-separated email addresses and build JSON array
+    String emailList = String(RESEND_TO_EMAILS);
+    String recipients = "[";
+
+    int startPos = 0;
+    int commaPos = emailList.indexOf(',');
+    bool firstEmail = true;
+
+    while (commaPos != -1) {
+        String email = emailList.substring(startPos, commaPos);
+        email.trim();
+        if (email.length() > 0) {
+            if (!firstEmail) recipients += ", ";
+            recipients += "\"" + email + "\"";
+            firstEmail = false;
+            Serial.println("Adding recipient: " + email);
+        }
+        startPos = commaPos + 1;
+        commaPos = emailList.indexOf(',', startPos);
+    }
+
+    // Add the last email address
+    String lastEmail = emailList.substring(startPos);
+    lastEmail.trim();
+    if (lastEmail.length() > 0) {
+        if (!firstEmail) recipients += ", ";
+        recipients += "\"" + lastEmail + "\"";
+        Serial.println("Adding recipient: " + lastEmail);
+    }
+    recipients += "]";
+
+    // Build JSON payload
+    String payload = "{";
+    payload += "\"from\":\"" + String(RESEND_FROM_EMAIL) + "\",";
+    payload += "\"to\":" + recipients + ",";
+    payload += "\"subject\":\"" + String(subject) + "\",";
+    payload += "\"text\":\"" + String(message) + "\\n\\nWebsite: " + String(hostURL) + "\"";
+    payload += "}";
+
+    Serial.println("\nFull Payload: " + payload);
+
+    // Configure SSL client
     client.setInsecure();
-    client.setBufferSizes(512, 512);
+    client.setTimeout(15000);
 
-    SMTPClient smtp(client);
+    http.begin(client, url);
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("Authorization", "Bearer " + String(RESEND_API_KEY));
+    http.setTimeout(15000);
 
-    smtp.connect(SMTP_HOST, SMTP_PORT, smtpCb, true);
-    if (!smtp.isConnected()) {
-        Serial.println("Failed to connect to SMTP server");
-        return false;
-    }
+    int httpCode = http.POST(payload);
+    String response = http.getString();
+    http.end();
 
-    smtp.authenticate(AUTHOR_EMAIL, AUTHOR_PASSWORD, readymail_auth_password);
-    if (!smtp.isAuthenticated()) {
-        Serial.println("Failed to authenticate");
-        return false;
-    }
-
-    SMTPMessage msg;
-    msg.headers.add(rfc822_subject, subject);
-    msg.headers.add(rfc822_from, AUTHOR_EMAIL);
-    msg.headers.add(rfc822_to, RECIPIENT_EMAIL);
-
-    // Use C strings to save memory
-    char body[200];
-    snprintf(body, sizeof(body), "%s\n\nWebsite: %s", message, hostURL);
-    msg.text.body(body);
-
-    bool success = smtp.send(msg, "");
-
-    if (success) {
-        Serial.println("Email sent successfully!");
+    if (httpCode == 200) {
+        Serial.printf("✓ Email sent successfully! HTTP code: %d\n", httpCode);
+        Serial.println("Response: " + response);
+        return true;
     } else {
-        Serial.println("Failed to send email");
+        Serial.printf("✗ Failed to send email. HTTP code: %d\n", httpCode);
+        Serial.println("Response: " + response);
+        return false;
     }
-
-    Serial.printf("Free heap after: %d bytes\n", ESP.getFreeHeap());
-    return success;
 }
 
 // Check website health
